@@ -29,7 +29,10 @@ call highlightag#auto_run()
 
 ## Options
 
-- `g:highlightag#ctags_opts` set the options of ctags command. Defaults is `-n`.
-- `g:highlightag#startup` If it is set 1, highlightag runs automatically.
+- `g:highlightag#ctags_opts` set the options of ctags command. default: `-n`.
+- `g:highlightag#startup` If it is set 1, highlightag runs automatically. default: 0
+- `g:highlightag#type` set the type for running ctags. default: 'normal'
+    - `normal`: run ctags command use `system()`
+    - `job`: run ctags command use `job_start()`
 
 - Highlights set in this plugin start from HiTag. You can check each highlight by `:filter HiTag highlight`. You can set highlights like `:hi HiTag~~ ctermfg=#` or `:hi link HiTag~~ Identifier`. Some highlights are already linked.
