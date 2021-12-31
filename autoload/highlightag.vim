@@ -330,6 +330,17 @@ function! s:get_tag_info() abort
     return split(ctag_res, '\n')
 endfunction
 
+function! s:get_tag_job() abort
+    let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
+    let ctag_cmd = printf('ctags -f - %s %s', ctags_opts, expand('%'))
+
+    let job = job_start(split(ctag_cmd, ' '), {'callback':expand('<SID>')..'job_cb'})
+endfunction
+
+function! <SID>job_cb(ch, message) abort
+    call s:set_keywards([a:message])
+endfunction
+
 function! s:set_keywards(tag_info) abort
     for line in a:tag_info
         let type = split(line, "\t")[0]
@@ -364,8 +375,23 @@ function! highlightag#run_hitag() abort
     if match(keys(s:hitag_dict), &filetype) == -1
         return
     endif
-    let tag_info = s:get_tag_info()
-    call s:set_keywards(tag_info)
+    let hitag_type = get(g:, 'highlightag#type', 'normal')
+    if hitag_type == 'normal'
+        let tag_info = s:get_tag_info()
+        call s:set_keywards(tag_info)
+    elseif hitag_type == 'job'
+        if has('job')
+            call s:get_tag_job()
+        else
+            echohl ErrorMsg
+            echomsg '(highlightag) job is not supported in this Vim.'
+            echohl None
+        endif
+    else
+        echohl WarningMsg
+        echomsg '(highlightag) not supported type.'
+        echohl None
+    endif
     call s:set_highlights()
 endfunction
 
