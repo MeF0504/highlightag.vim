@@ -322,19 +322,76 @@ let s:hitag_dict = {
             \ }
 " }}}
 
-function! s:get_tag_info() abort
-    let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
-    let ctag_cmd = printf('ctags -f - %s %s', ctags_opts, expand('%'))
-    let ctag_res = system(ctag_cmd)
-
-    return split(ctag_res, '\n')
+function! highlightag#support_filetype(filetype) abort
+    if empty(a:filetype)
+        return 0
+    endif
+    if match(keys(s:hitag_dict), &filetype) == -1
+        return 0
+    else
+        return 1
+    endif
 endfunction
 
-function! s:get_tag_job() abort
-    let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
-    let ctag_cmd = printf('ctags -f - %s %s', ctags_opts, expand('%'))
+function! s:echo_war(str) abort
+    echohl WarningMsg
+    echomsg '(highlightag) '..a:str
+    echohl None
+endfunction
 
-    let job = job_start(split(ctag_cmd, ' '), {'callback':expand('<SID>')..'job_cb'})
+function! s:echo_err(str) abort
+    echohl ErrorMsg
+    echomsg '(highlightag) '..a:str
+    echohl None
+endfunction
+
+function! s:get_tag_info() abort
+    let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
+    let ctags_cmd = printf('ctags -f - %s %s', ctags_opts, expand('%'))
+    silent let ctags_res = system(ctags_cmd)
+
+    return split(ctags_res, '\n')
+endfunction
+
+function! s:get_tag_info_job() abort
+    let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
+    let ctags_cmd = printf('ctags -f - %s %s', ctags_opts, expand('%'))
+
+    let job = job_start(split(ctags_cmd, ' '), {'callback':expand('<SID>')..'job_cb'})
+endfunction
+
+function! s:get_tag_info_file(file) abort
+    if has('win32') || has('win64')
+        let show_cmd = 'type'
+    else
+        let show_cmd = 'cat'
+    endif
+    if !executable(show_cmd)
+        call s:echo_err(printf('this command requires %s.', show_cmd))
+        return
+    endif
+
+    if filereadable(a:file)
+        silent let ctags_info = system(printf('%s %s', show_cmd, a:file))
+        return split(ctags_info, '\n')
+    endif
+    return []
+endfunction
+
+function! s:get_tag_info_job_file(file) abort
+    if has('win32') || has('win64')
+        let show_cmd = 'type'
+    else
+        let show_cmd = 'cat'
+    endif
+    if !executable(show_cmd)
+        call s:echo_err(printf('this command requires %s.', show_cmd))
+        return
+    endif
+
+    if filereadable(a:file)
+        let job = job_start([show_cmd, a:file], {'callback':expand('<SID>')..'job_cb'})
+    endif
 endfunction
 
 function! <SID>job_cb(ch, message) abort
@@ -343,12 +400,17 @@ endfunction
 
 function! s:set_keywards(tag_info) abort
     for line in a:tag_info
+        if line[0] == '!'
+            continue
+        endif
         let type = split(line, "\t")[0]
         let idx = match(line, ';"')+3
         let kind = line[idx:idx]
-        let exe_cmd = printf('syntax keyword %s %s', s:hitag_dict[&filetype][kind][0], type)
-        execute exe_cmd
-        " echomsg exe_cmd
+        if match(keys(s:hitag_dict[&filetype]), kind) != -1
+            let exe_cmd = printf('syntax keyword %s %s', s:hitag_dict[&filetype][kind][0], type)
+            execute exe_cmd
+            " echomsg exe_cmd
+        endif
     endfor
 endfunction
 
@@ -372,33 +434,61 @@ function! s:set_highlights() abort
 endfunction
 
 function! highlightag#run_hitag() abort
-    if match(keys(s:hitag_dict), &filetype) == -1
+    if !executable('ctags')
+        call s:echo_err('ctags is not executable.')
         return
     endif
-    let hitag_type = get(g:, 'highlightag#type', 'normal')
-    if hitag_type == 'normal'
-        let tag_info = s:get_tag_info()
-        call s:set_keywards(tag_info)
-    elseif hitag_type == 'job'
-        if has('job')
-            call s:get_tag_job()
-        else
-            echohl ErrorMsg
-            echomsg '(highlightag) job is not supported in this Vim.'
-            echohl None
-        endif
-    else
-        echohl WarningMsg
-        echomsg '(highlightag) not supported type.'
-        echohl None
+    if !highlightag#support_filetype(&filetype)
+        call s:echo_err(printf('%s is not supported.', &filetype))
+        return
     endif
+    let tag_info = s:get_tag_info()
+    call s:set_keywards(tag_info)
     call s:set_highlights()
 endfunction
 
-function! highlightag#auto_run()
-    augroup HiTags
-        autocmd!
-        autocmd Syntax * call highlightag#run_hitag()
-    augroup END
+function! highlightag#run_hitag_job() abort
+    if !executable('ctags')
+        call s:echo_err('ctags is not executable.')
+        return
+    endif
+    if !highlightag#support_filetype(&filetype)
+        call s:echo_err(printf('%s is not supported.', &filetype))
+        return
+    endif
+    if !has('job')
+        call s:echo_err('job is not supported in this Vim.')
+        return
+    endif
+
+    call s:set_highlights()
+    call s:get_tag_info_job()
+endfunction
+
+function! highlightag#run_hitag_file() abort
+    if !highlightag#support_filetype(&filetype)
+        return
+    endif
+
+    for tfile in tagfiles()
+        let tag_info = s:get_tag_info_file(tfile)
+        call s:set_keywards(tag_info)
+    endfor
+    call s:set_highlights()
+endfunction
+
+function! highlightag#run_hitag_job_file() abort
+    if !highlightag#support_filetype(&filetype)
+        return
+    endif
+    if !has('job')
+        call s:echo_err('(highlightag) job is not supported in this Vim.')
+        return
+    endif
+
+    call s:set_highlights()
+    for tfile in tagfiles()
+        call s:get_tag_info_job_file(tfile)
+    endfor
 endfunction
 

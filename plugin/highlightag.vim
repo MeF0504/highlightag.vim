@@ -10,14 +10,13 @@ endif
 let g:loaded_highlightag = 1
 
 if !executable('ctags')
-    echohl ErrorMsg
-    echomsg 'ctags is not executable. highlightag is not available.'
+    echohl WarningMsg
+    echomsg 'ctags is not executable. Some functions in highlightag are not available.'
     echohl None
 endif
 
-let g:highlightag#startup = get(g:, 'highlightag#startup', 0)
-
-if g:highlightag#startup
-    call highlightag#auto_run()
-endif
+command! HiTagRun <mods> call highlightag#run_hitag()
+command! HiTagJob <mods> call highlightag#run_hitag_job()
+command! HiTagFile <mods> call highlightag#run_hitag_file()
+command! HiTagJobFile <mods> call highlightag#run_hitag_job_file()
 
