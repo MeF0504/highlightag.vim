@@ -322,6 +322,14 @@ let s:hitag_dict = {
             \ }
 " }}}
 
+let s:sid = expand('<SID>')
+if empty(s:sid)
+    function! s:SID_PREFIX() " tentative
+        return matchstr(expand('<sfile>'), '<SNR>\d\+_\zeSID_PREFIX$')
+    endfunction
+    let s:sid = s:SID_PREFIX()
+endif
+
 function! highlightag#support_filetype(filetype) abort
     if empty(a:filetype)
         return 0
@@ -357,7 +365,7 @@ function! s:get_tag_info_job() abort
     let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
     let ctags_cmd = printf('ctags -f - %s %s', ctags_opts, expand('%'))
 
-    let job = job_start(split(ctags_cmd, ' '), {'callback':expand('<SID>')..'job_cb'})
+    let job = job_start(split(ctags_cmd, ' '), {'callback':s:sid..'job_cb'})
 endfunction
 
 function! s:get_tag_info_file(file) abort
@@ -390,7 +398,7 @@ function! s:get_tag_info_job_file(file) abort
     endif
 
     if filereadable(a:file)
-        let job = job_start([show_cmd, a:file], {'callback':expand('<SID>')..'job_cb'})
+        let job = job_start([show_cmd, a:file], {'callback':s:sid..'job_cb'})
     endif
 endfunction
 
