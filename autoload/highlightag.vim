@@ -330,7 +330,7 @@ if empty(s:sid)
     let s:sid = s:SID_PREFIX()
 endif
 
-function! highlightag#support_filetype(filetype) abort
+function! s:chk_ft(filetype) abort
     if empty(a:filetype)
         return 0
     endif
@@ -339,6 +339,10 @@ function! highlightag#support_filetype(filetype) abort
     else
         return 1
     endif
+endfunction
+
+function! highlightag#check_filetype(filetype) abort
+    return s:chk_ft(a:filetype)
 endfunction
 
 function! s:echo_war(str) abort
@@ -414,7 +418,7 @@ function! s:set_keywards(tag_info) abort
         let type = split(line, "\t")[0]
         let idx = match(line, ';"')+3
         let kind = line[idx:idx]
-        if match(keys(s:hitag_dict[&filetype]), kind) != -1
+        if s:chk_ft(&filetype) && (match(keys(s:hitag_dict[&filetype]), kind) != -1)
             let exe_cmd = printf('syntax keyword %s %s', s:hitag_dict[&filetype][kind][0], type)
             execute exe_cmd
             " echomsg exe_cmd
@@ -424,6 +428,9 @@ endfunction
 
 let s:fts_set_his = []
 function! s:set_highlights() abort
+    if !s:chk_ft(&filetype)
+        return
+    endif
     if match(s:fts_set_his, &filetype) != -1
         return
     endif
@@ -446,7 +453,7 @@ function! highlightag#run_hitag() abort
         call s:echo_err('ctags is not executable.')
         return
     endif
-    if !highlightag#support_filetype(&filetype)
+    if !s:chk_ft(&filetype)
         call s:echo_err(printf('%s is not supported.', &filetype))
         return
     endif
@@ -460,7 +467,7 @@ function! highlightag#run_hitag_job() abort
         call s:echo_err('ctags is not executable.')
         return
     endif
-    if !highlightag#support_filetype(&filetype)
+    if !s:chk_ft(&filetype)
         call s:echo_err(printf('%s is not supported.', &filetype))
         return
     endif
@@ -474,7 +481,7 @@ function! highlightag#run_hitag_job() abort
 endfunction
 
 function! highlightag#run_hitag_file() abort
-    if !highlightag#support_filetype(&filetype)
+    if !s:chk_ft(&filetype)
         return
     endif
 
@@ -486,7 +493,7 @@ function! highlightag#run_hitag_file() abort
 endfunction
 
 function! highlightag#run_hitag_job_file() abort
-    if !highlightag#support_filetype(&filetype)
+    if !s:chk_ft(&filetype)
         return
     endif
     if !has('job')
