@@ -147,7 +147,7 @@ let s:hitag_dict = {
                 \'m': ['HiTagMethods', ''],
                 \'p': ['HiTagPackages', ''],
                 \ },
-            \'javascripthitag': {
+            \'javascript': {
                 \'f': ['HiTagFunctions', ''],
                 \'c': ['HiTagClasses', ''],
                 \'m': ['HiTagMethods', ''],
@@ -334,7 +334,7 @@ function! s:chk_ft(filetype) abort
     if empty(a:filetype)
         return 0
     endif
-    if match(keys(s:hitag_dict), &filetype) == -1
+    if match(keys(s:hitag_dict), printf('\<%s\>', a:filetype)) == -1
         return 0
     else
         return 1
