@@ -367,9 +367,14 @@ endfunction
 
 function! s:get_tag_info_job() abort
     let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
-    let ctags_cmd = printf('ctags -f - %s %s', ctags_opts, expand('%'))
+    let ctags_cmd = printf('ctags -f - %s %s', ctags_opts, fnamemodify(expand('%')))
+    let ctags_cmd = split(ctags_cmd)
 
-    let job = job_start(split(ctags_cmd, ' '), {'callback':s:sid..'job_cb'})
+    if has('job')
+        let job = job_start(ctags_cmd, {'callback':s:sid..'job_cb'})
+    elseif exists('*jobstart')
+        let job = jobstart(ctags_cmd, {'on_stdout': s:sid..'job_neocb'})
+    endif
 endfunction
 
 function! s:get_tag_info_file(file) abort
@@ -402,7 +407,11 @@ function! s:get_tag_info_job_file(file) abort
     endif
 
     if filereadable(a:file)
-        let job = job_start([show_cmd, a:file], {'callback':s:sid..'job_cb'})
+        if has('job')
+            let job = job_start([show_cmd, a:file], {'callback':s:sid..'job_cb'})
+        elseif exists('*jobstart')
+            let job = jobstart([show_cmd, a:file], {'on_stdout': s:sid..'job_neocb'})
+        endif
     endif
 endfunction
 
@@ -410,9 +419,16 @@ function! <SID>job_cb(ch, message) abort
     call s:set_keywards([a:message])
 endfunction
 
+function! <SID>job_neocb(jobid, data, event) abort
+    call s:set_keywards(a:data)
+endfunction
+
 function! s:set_keywards(tag_info) abort
     for line in a:tag_info
         if line[0] == '!'
+            continue
+        endif
+        if match(line, "\t") == -1
             continue
         endif
         let type = split(line, "\t")[0]
@@ -471,13 +487,14 @@ function! highlightag#run_hitag_job() abort
         call s:echo_err(printf('%s is not supported.', &filetype))
         return
     endif
-    if !has('job')
+
+    if has('job') || exists('*jobstart')
+        call s:set_highlights()
+        call s:get_tag_info_job()
+    else
         call s:echo_err('job is not supported in this Vim.')
         return
     endif
-
-    call s:set_highlights()
-    call s:get_tag_info_job()
 endfunction
 
 function! highlightag#run_hitag_file() abort
@@ -496,14 +513,15 @@ function! highlightag#run_hitag_job_file() abort
     if !s:chk_ft(&filetype)
         return
     endif
-    if !has('job')
-        call s:echo_err('(highlightag) job is not supported in this Vim.')
+
+    if has('job') || exists('*jobstart')
+        call s:set_highlights()
+        for tfile in tagfiles()
+            call s:get_tag_info_job_file(tfile)
+        endfor
+    else
+        call s:echo_err('job is not supported in this Vim.')
         return
     endif
-
-    call s:set_highlights()
-    for tfile in tagfiles()
-        call s:get_tag_info_job_file(tfile)
-    endfor
 endfunction
 
