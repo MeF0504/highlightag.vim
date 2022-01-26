@@ -367,7 +367,7 @@ endfunction
 
 function! s:get_tag_info_job() abort
     let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
-    let ctags_cmd = printf('ctags -f - %s %s', ctags_opts, fnamemodify(expand('%')))
+    let ctags_cmd = printf('ctags -f - %s %s', ctags_opts, fnameescape(expand('%')))
     let ctags_cmd = split(ctags_cmd)
 
     if has('job')
