@@ -330,6 +330,58 @@ if empty(s:sid)
     let s:sid = s:SID_PREFIX()
 endif
 
+function! highlightag#update_hi_setting(highlight_setting) abort
+    if type(a:highlight_setting) != type({})
+        call s:echo_err('argument is not a correct format.')
+        return
+    endif
+    for ft in keys(a:highlight_setting)
+        if type(a:highlight_setting[ft]) != type({})
+            call s:echo_err('argument is not a correct format.')
+            return
+        endif
+        for kind in keys(a:highlight_setting[ft])
+            let hi_info = a:highlight_setting[ft][kind]
+            if !(type(hi_info) == type([]) && len(hi_info) == 2)
+                call s:echo_err('argument is not a correct format.')
+                return
+            endif
+            if !(type(hi_info[0]) == type('') && type(hi_info[1]) == type(''))
+                call s:echo_err('argument is not a correct format.')
+                return
+            endif
+        endfor
+    endfor
+    call extend(s:hitag_dict, a:highlight_setting, 'force')
+endfunction
+
+function! highlightag#show_highlight_info(...) abort
+    if a:0 == 0
+        let ft_list = sort(keys(s:hitag_dict))
+    else
+        let ft_list = a:000
+    endif
+    for ft in ft_list
+        if !s:chk_ft(ft)
+            call s:echo_war(ft..' is not supported.')
+            continue
+        endif
+        echo printf('file type: %s', ft)
+        for kind in sort(keys(s:hitag_dict[ft]))
+            echo printf("    kind: '%s' highlight: ", kind)
+            let hi_info = s:hitag_dict[ft][kind]
+            if empty(hi_info[1])
+                execute 'echohl '..hi_info[0]
+                echon printf("%s", hi_info[0])
+            else
+                execute 'echohl '..hi_info[1]
+                echon printf("%s => %s", hi_info[0], hi_info[1])
+            endif
+            echohl None
+        endfor
+    endfor
+endfunction
+
 function! s:chk_ft(filetype) abort
     if empty(a:filetype)
         return 0

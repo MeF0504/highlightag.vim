@@ -61,3 +61,31 @@ call highlightag#run_hitag_job_file()
 - `g:highlightag#ctags_opts` set the options of ctags command executed in this plugin. default: `-n`.
 
 - Highlights set in this plugin start from HiTag. You can check each highlight by `:filter HiTag highlight`. You can set highlights like `:hi HiTag~~ ctermfg=#` or `:hi link HiTag~~ Identifier`. Some highlights are already linked.
+
+- You can append an additional highlight settings by calling `highlightag#update_hi_setting({highlight_setting})`. The argument should be a dictionary containing file types, kinds, and highlight names like
+``` vim
+{ 
+    \ filetype1: {
+        \ kind1: [highlight_name, linked_highlight_name],
+        \ kind2: [highlight_name, ''],
+        \ ...
+    \ },
+    \ filetype2: {
+        \ kind3: [highlight_name, linked_highlight_name],
+    \ },
+}
+```
+    - It is possible to set the linked highlight name as `''`, and then the highlight name is linked nothing.
+    - You can check current highlight settings by `:call highlightag#show_highlight_info()`(all information) or `:call highlightag#show_highlight_info(&filetype)`(show highlight information of current file type).
+    - sample:
+``` vim
+let s:hitag_info = {
+        \ 'typescript': {
+            \ 'f': ['HiTagFunctions', 'Identifier'],
+            \ 'c': ['HiTagClasses', ''],
+            \ 'm': ['HiTagModules', ''],
+        \ },
+    \ }
+call highlightag#update_hi_setting(s:hitag_info)
+```
+
