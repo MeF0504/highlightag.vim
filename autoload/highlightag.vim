@@ -386,7 +386,7 @@ function! s:chk_ft(filetype) abort
     if empty(a:filetype)
         return 0
     endif
-    if match(keys(s:hitag_dict), printf('\<%s\>', a:filetype)) == -1
+    if index(keys(s:hitag_dict), a:filetype) == -1
         return 0
     else
         return 1
@@ -486,7 +486,7 @@ function! s:set_keywards(tag_info) abort
         let type = split(line, "\t")[0]
         let idx = match(line, ';"')+3
         let kind = line[idx:idx]
-        if s:chk_ft(&filetype) && (match(keys(s:hitag_dict[&filetype]), kind) != -1)
+        if s:chk_ft(&filetype) && (index(keys(s:hitag_dict[&filetype]), kind) != -1)
             let exe_cmd = printf('syntax keyword %s %s', s:hitag_dict[&filetype][kind][0], type)
             execute exe_cmd
             " echomsg exe_cmd
@@ -499,7 +499,7 @@ function! s:set_highlights() abort
     if !s:chk_ft(&filetype)
         return
     endif
-    if match(s:fts_set_his, &filetype) != -1
+    if index(s:fts_set_his, &filetype) != -1
         return
     endif
 
