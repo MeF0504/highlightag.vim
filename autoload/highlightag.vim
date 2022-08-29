@@ -382,6 +382,14 @@ function! highlightag#show_highlight_info(...) abort
     endfor
 endfunction
 
+function! s:get_ft(arg) abort
+    if a:arg[0] == 0
+        return &filetype
+    else
+        return a:arg[1]
+    endif
+endfunction
+
 function! s:chk_ft(filetype) abort
     if empty(a:filetype)
         return 0
@@ -409,7 +417,7 @@ function! s:echo_err(str) abort
     echohl None
 endfunction
 
-function! s:get_tag_info(job) abort
+function! s:get_tag_info(job, filetype) abort
     if !executable('ctags')
         if !a:job
             call s:echo_err('ctags is not executable.')
@@ -417,14 +425,15 @@ function! s:get_tag_info(job) abort
         return []
     endif
     let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
-    let ctags_cmd = printf('ctags -f - %s %s', ctags_opts, fnameescape(expand('%')))
+    let ctags_cmd = printf('ctags -f - --language-force=%s %s %s',
+                \ a:filetype, ctags_opts, fnameescape(expand('%')))
 
     if a:job
         " let ctags_cmd = split(ctags_cmd)
         if has('job')
-            let job = job_start(ctags_cmd, {'callback':s:sid..'job_cb'})
+            let job = job_start(ctags_cmd, {'callback': function(s:sid..'job_cb', [a:filetype])})
         elseif exists('*jobstart')
-            let job = jobstart(ctags_cmd, {'on_stdout': s:sid..'job_neocb'})
+            let job = jobstart(ctags_cmd, {'on_stdout': function(s:sid..'job_neocb', [a:filetype])})
         endif
     else
         silent let ctags_res = systemlist(ctags_cmd)
@@ -433,7 +442,7 @@ function! s:get_tag_info(job) abort
     return []
 endfunction
 
-function! s:get_tag_info_file(file, job) abort
+function! s:get_tag_info_file(file, job, filetype) abort
     if has('win32') || has('win64')
         let show_cmd = 'type'
     else
@@ -449,9 +458,9 @@ function! s:get_tag_info_file(file, job) abort
     if filereadable(a:file)
         if a:job
             if has('job')
-                let job = job_start([show_cmd, a:file], {'callback':s:sid..'job_cb'})
+                let job = job_start([show_cmd, a:file], {'callback': function(s:sid..'job_cb', [a:filetype])})
             elseif exists('*jobstart')
-                let job = jobstart([show_cmd, a:file], {'on_stdout': s:sid..'job_neocb'})
+                let job = jobstart([show_cmd, a:file], {'on_stdout': function(s:sid..'job_neocb', [a:filetype])})
             endif
         else
             silent let ctags_info = systemlist(printf('%s %s', show_cmd, a:file))
@@ -461,15 +470,15 @@ function! s:get_tag_info_file(file, job) abort
     return []
 endfunction
 
-function! <SID>job_cb(ch, message) abort
-    call s:set_keywards([a:message])
+function! <SID>job_cb(filetype, ch, message) abort
+    call s:set_keywards([a:message], a:filetype)
 endfunction
 
-function! <SID>job_neocb(jobid, data, event) abort
-    call s:set_keywards(a:data)
+function! <SID>job_neocb(filetype, jobid, data, event) abort
+    call s:set_keywards(a:data, a:filetype)
 endfunction
 
-function! s:set_keywards(tag_info) abort
+function! s:set_keywards(tag_info, filetype) abort
     for line in a:tag_info
         if line[0] == '!'
             continue
@@ -480,8 +489,8 @@ function! s:set_keywards(tag_info) abort
         let type = split(line, "\t")[0]
         let idx = match(line, ';"')+3
         let kind = line[idx:idx]
-        if s:chk_ft(&filetype) && (index(keys(s:hitag_dict[&filetype]), kind) != -1)
-            let exe_cmd = printf('syntax keyword %s %s', s:hitag_dict[&filetype][kind][0], type)
+        if s:chk_ft(a:filetype) && (index(keys(s:hitag_dict[a:filetype]), kind) != -1)
+            let exe_cmd = printf('syntax keyword %s %s', s:hitag_dict[a:filetype][kind][0], type)
             execute exe_cmd
             " echomsg exe_cmd
         endif
@@ -489,15 +498,15 @@ function! s:set_keywards(tag_info) abort
 endfunction
 
 let s:fts_set_his = []
-function! s:set_highlights() abort
-    if !s:chk_ft(&filetype)
+function! s:set_highlights(filetype) abort
+    if !s:chk_ft(a:filetype)
         return
     endif
-    if index(s:fts_set_his, &filetype) != -1
+    if index(s:fts_set_his, a:filetype) != -1
         return
     endif
 
-    let hi_settings = s:hitag_dict[&filetype]
+    let hi_settings = s:hitag_dict[a:filetype]
     for key in keys(hi_settings)
         if !empty(hi_settings[key][1])
             let hi_cmd = printf('highlight default link %s %s', hi_settings[key][0], hi_settings[key][1])
@@ -507,55 +516,59 @@ function! s:set_highlights() abort
         execute hi_cmd
         " echomsg hi_cmd
     endfor
-    call add(s:fts_set_his, &filetype)
+    call add(s:fts_set_his, a:filetype)
 endfunction
 
-function! highlightag#run_hitag() abort
-    if !s:chk_ft(&filetype)
-        call s:echo_err(printf('%s is not supported.', &filetype))
+function! highlightag#run_hitag(...) abort
+    let filetype = s:get_ft(a:)
+    if !s:chk_ft(filetype)
+        call s:echo_err(printf('%s is not supported.', filetype))
         return
     endif
-    let tag_info = s:get_tag_info(0)
+    let tag_info = s:get_tag_info(0, filetype)
     call s:set_keywards(tag_info)
-    call s:set_highlights()
+    call s:set_highlights(filetype)
 endfunction
 
-function! highlightag#run_hitag_job() abort
-    if !s:chk_ft(&filetype)
-        call s:echo_err(printf('%s is not supported.', &filetype))
+function! highlightag#run_hitag_job(...) abort
+    let filetype = s:get_ft(a:)
+    if !s:chk_ft(filetype)
+        call s:echo_err(printf('%s is not supported.', filetype))
         return
     endif
 
     if has('job') || exists('*jobstart')
-        call s:set_highlights()
-        call s:get_tag_info(1)
+        call s:set_highlights(filetype)
+        call s:get_tag_info(1, filetype)
     else
         call s:echo_err('job is not supported in this Vim.')
         return
     endif
 endfunction
 
-function! highlightag#run_hitag_file() abort
-    if !s:chk_ft(&filetype)
+function! highlightag#run_hitag_file(...) abort
+    let filetype = s:get_ft(a:)
+    if !s:chk_ft(filetype)
         return
     endif
 
     for tfile in tagfiles()
-        let tag_info = s:get_tag_info_file(tfile, 0)
+        let tag_info = s:get_tag_info_file(tfile, 0, filetype)
         call s:set_keywards(tag_info)
     endfor
-    call s:set_highlights()
+    call s:set_highlights(filetype)
 endfunction
 
-function! highlightag#run_hitag_job_file() abort
-    if !s:chk_ft(&filetype)
+function! highlightag#run_hitag_job_file(...) abort
+    let filetype = s:get_ft(a:)
+    if !s:chk_ft(filetype)
         return
     endif
 
     if has('job') || exists('*jobstart')
-        call s:set_highlights()
+        call s:set_highlights(filetype)
         for tfile in tagfiles()
-            call s:get_tag_info_file(tfile, 1)
+            call s:get_tag_info_file(tfile, 1, filetype)
         endfor
     else
         call s:echo_err('job is not supported in this Vim.')

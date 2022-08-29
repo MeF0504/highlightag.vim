@@ -15,8 +15,8 @@ if !executable('ctags')
     echohl None
 endif
 
-command! HiTagRun <mods> call highlightag#run_hitag()
-command! HiTagJob <mods> call highlightag#run_hitag_job()
-command! HiTagFile <mods> call highlightag#run_hitag_file()
-command! HiTagJobFile <mods> call highlightag#run_hitag_job_file()
+command! -nargs=? HiTagRun <mods> call highlightag#run_hitag(<f-args>)
+command! -nargs=? HiTagJob <mods> call highlightag#run_hitag_job(<f-args>)
+command! -nargs=? HiTagFile <mods> call highlightag#run_hitag_file(<f-args>)
+command! -nargs=? HiTagJobFile <mods> call highlightag#run_hitag_job_file(<f-args>)
 

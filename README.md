@@ -32,33 +32,34 @@ augroup END
 #### Available commands
 
 ```vim
-HiTagRun
+HiTagRun [filetype]
 " or
-call highlightag#run_hitag()
+call highlightag#run_hitag([filetype])
 ```
  sets highlights got from ctags output (run ctags command by using `system()`).
 
 ```vim
-HiTagJob
+HiTagJob [filetype]
 " or
-call highlightag#run_hitag_job()
+call highlightag#run_hitag_job([filetype])
 ```
  sets highlights got from ctags output (run ctags command by using `job_start()`).
 
 ```vim
-HiTagFile
+HiTagFile [filetype]
 " or
-call highlightag#run_hitag_file()
+call highlightag#run_hitag_file([filetype])
 ```
  sets highlights from tag files already made. (run `cat` command in macOS/Linux or `type` command in Windows, using `system()`.)
 
 ```vim
-HiTagJobFile
+HiTagJobFile [filetype]
 " or
-call highlightag#run_hitag_job_file()
+call highlightag#run_hitag_job_file([filetype])
 ```
  sets highlights from tag files already made. (run `cat` command in macOS/Linux or `type` command in Windows, using `job_start()`.)
 
+The above commands can specify the file type. If it is not specified, &filetype is used.
 
 ## Options
 
