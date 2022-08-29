@@ -409,62 +409,56 @@ function! s:echo_err(str) abort
     echohl None
 endfunction
 
-function! s:get_tag_info() abort
-    let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
-    let ctags_cmd = printf('ctags -f - %s %s', ctags_opts, expand('%'))
-    silent let ctags_res = system(ctags_cmd)
-
-    return split(ctags_res, '\n')
-endfunction
-
-function! s:get_tag_info_job() abort
+function! s:get_tag_info(job) abort
+    if !executable('ctags')
+        if !a:job
+            call s:echo_err('ctags is not executable.')
+        endif
+        return []
+    endif
     let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
     let ctags_cmd = printf('ctags -f - %s %s', ctags_opts, fnameescape(expand('%')))
-    let ctags_cmd = split(ctags_cmd)
 
-    if has('job')
-        let job = job_start(ctags_cmd, {'callback':s:sid..'job_cb'})
-    elseif exists('*jobstart')
-        let job = jobstart(ctags_cmd, {'on_stdout': s:sid..'job_neocb'})
-    endif
-endfunction
-
-function! s:get_tag_info_file(file) abort
-    if has('win32') || has('win64')
-        let show_cmd = 'type'
+    if a:job
+        " let ctags_cmd = split(ctags_cmd)
+        if has('job')
+            let job = job_start(ctags_cmd, {'callback':s:sid..'job_cb'})
+        elseif exists('*jobstart')
+            let job = jobstart(ctags_cmd, {'on_stdout': s:sid..'job_neocb'})
+        endif
     else
-        let show_cmd = 'cat'
-    endif
-    if !executable(show_cmd)
-        call s:echo_err(printf('this command requires %s.', show_cmd))
-        return
-    endif
-
-    if filereadable(a:file)
-        silent let ctags_info = system(printf('%s %s', show_cmd, a:file))
-        return split(ctags_info, '\n')
+        silent let ctags_res = systemlist(ctags_cmd)
+        return ctags_res
     endif
     return []
 endfunction
 
-function! s:get_tag_info_job_file(file) abort
+function! s:get_tag_info_file(file, job) abort
     if has('win32') || has('win64')
         let show_cmd = 'type'
     else
         let show_cmd = 'cat'
     endif
     if !executable(show_cmd)
-        call s:echo_err(printf('this command requires %s.', show_cmd))
-        return
+        if !a:job
+            call s:echo_err(printf('failed to exexute %s.', show_cmd))
+        endif
+        return []
     endif
 
     if filereadable(a:file)
-        if has('job')
-            let job = job_start([show_cmd, a:file], {'callback':s:sid..'job_cb'})
-        elseif exists('*jobstart')
-            let job = jobstart([show_cmd, a:file], {'on_stdout': s:sid..'job_neocb'})
+        if a:job
+            if has('job')
+                let job = job_start([show_cmd, a:file], {'callback':s:sid..'job_cb'})
+            elseif exists('*jobstart')
+                let job = jobstart([show_cmd, a:file], {'on_stdout': s:sid..'job_neocb'})
+            endif
+        else
+            silent let ctags_info = systemlist(printf('%s %s', show_cmd, a:file))
+            return ctags_info
         endif
     endif
+    return []
 endfunction
 
 function! <SID>job_cb(ch, message) abort
@@ -517,24 +511,16 @@ function! s:set_highlights() abort
 endfunction
 
 function! highlightag#run_hitag() abort
-    if !executable('ctags')
-        call s:echo_err('ctags is not executable.')
-        return
-    endif
     if !s:chk_ft(&filetype)
         call s:echo_err(printf('%s is not supported.', &filetype))
         return
     endif
-    let tag_info = s:get_tag_info()
+    let tag_info = s:get_tag_info(0)
     call s:set_keywards(tag_info)
     call s:set_highlights()
 endfunction
 
 function! highlightag#run_hitag_job() abort
-    if !executable('ctags')
-        call s:echo_err('ctags is not executable.')
-        return
-    endif
     if !s:chk_ft(&filetype)
         call s:echo_err(printf('%s is not supported.', &filetype))
         return
@@ -542,7 +528,7 @@ function! highlightag#run_hitag_job() abort
 
     if has('job') || exists('*jobstart')
         call s:set_highlights()
-        call s:get_tag_info_job()
+        call s:get_tag_info(1)
     else
         call s:echo_err('job is not supported in this Vim.')
         return
@@ -555,7 +541,7 @@ function! highlightag#run_hitag_file() abort
     endif
 
     for tfile in tagfiles()
-        let tag_info = s:get_tag_info_file(tfile)
+        let tag_info = s:get_tag_info_file(tfile, 0)
         call s:set_keywards(tag_info)
     endfor
     call s:set_highlights()
@@ -569,7 +555,7 @@ function! highlightag#run_hitag_job_file() abort
     if has('job') || exists('*jobstart')
         call s:set_highlights()
         for tfile in tagfiles()
-            call s:get_tag_info_job_file(tfile)
+            call s:get_tag_info_file(tfile, 1)
         endfor
     else
         call s:echo_err('job is not supported in this Vim.')

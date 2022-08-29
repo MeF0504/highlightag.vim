@@ -9,9 +9,13 @@ Vim plugin to get highlight information from ctags command.
 
 ## Installation
 
-if you use dein,
+- [dein](https://github.com/Shougo/dein.vim)
 ```vim
 call dein#add('MeF0504/highlightag.vim')
+```
+- [vim-plug](https://github.com/junegunn/vim-plug)
+```vim
+Plug 'MeF0504/hicolcode.vim'
 ```
 or do something like this.
 
@@ -75,9 +79,9 @@ call highlightag#run_hitag_job_file()
     \ },
 }
 ```
-    - It is possible to set the linked highlight name as `''`, and then the highlight name is linked nothing.
-    - You can check current highlight settings by `:call highlightag#show_highlight_info()`(all information) or `:call highlightag#show_highlight_info(&filetype)`(show highlight information of current file type).
-    - sample:
+- It is possible to set the linked highlight name as `''`, and then the highlight name is linked nothing.
+- You can check current highlight settings by `:call highlightag#show_highlight_info()`(all information) or `:call highlightag#show_highlight_info(&filetype)`(show highlight information of current file type).
+- sample:
 ``` vim
 let s:hitag_info = {
         \ 'typescript': {
