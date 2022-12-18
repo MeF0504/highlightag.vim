@@ -430,11 +430,7 @@ function! s:get_tag_info(job, filetype) abort
 
     if a:job
         " let ctags_cmd = split(ctags_cmd)
-        if has('job')
-            let job = job_start(ctags_cmd, {'callback': function(s:sid..'job_cb', [a:filetype])})
-        elseif exists('*jobstart')
-            let job = jobstart(ctags_cmd, {'on_stdout': function(s:sid..'job_neocb', [a:filetype])})
-        endif
+        call s:run_job(ctags_cmd, [a:filetype, win_getid()])
     else
         silent let ctags_res = systemlist(ctags_cmd)
         return ctags_res
@@ -457,11 +453,7 @@ function! s:get_tag_info_file(file, job, filetype) abort
 
     if filereadable(a:file)
         if a:job
-            if has('job')
-                let job = job_start([show_cmd, a:file], {'callback': function(s:sid..'job_cb', [a:filetype])})
-            elseif exists('*jobstart')
-                let job = jobstart([show_cmd, a:file], {'on_stdout': function(s:sid..'job_neocb', [a:filetype])})
-            endif
+            call s:run_job([show_cmd, a:file], [a:filetype, win_getid()])
         else
             silent let ctags_info = systemlist(printf('%s %s', show_cmd, a:file))
             return ctags_info
@@ -470,15 +462,23 @@ function! s:get_tag_info_file(file, job, filetype) abort
     return []
 endfunction
 
-function! <SID>job_cb(filetype, ch, message) abort
-    call s:set_keywards([a:message], a:filetype)
+function! s:run_job(cmd, args) abort
+    if has('job')
+        let job = job_start(a:cmd, {'callback': function(s:sid..'job_cb', a:args)})
+    elseif exists('*jobstart')
+        let job = jobstart(a:cmd, {'on_stdout': function(s:sid..'job_neocb', a:args)})
+    endif
 endfunction
 
-function! <SID>job_neocb(filetype, jobid, data, event) abort
-    call s:set_keywards(a:data, a:filetype)
+function! <SID>job_cb(filetype, winid, ch, message) abort
+    call s:set_keywards([a:message], a:filetype, a:winid)
 endfunction
 
-function! s:set_keywards(tag_info, filetype) abort
+function! <SID>job_neocb(filetype, winid, jobid, data, event) abort
+    call s:set_keywards(a:data, a:filetype, a:winid)
+endfunction
+
+function! s:set_keywards(tag_info, filetype, winid) abort
     for line in a:tag_info
         if line[0] == '!'
             continue
@@ -491,7 +491,7 @@ function! s:set_keywards(tag_info, filetype) abort
         let kind = line[idx:idx]
         if s:chk_ft(a:filetype) && (index(keys(s:hitag_dict[a:filetype]), kind) != -1)
             let exe_cmd = printf('syntax keyword %s %s', s:hitag_dict[a:filetype][kind][0], type)
-            execute exe_cmd
+            call win_execute(a:winid, exe_cmd)
             " echomsg exe_cmd
         endif
     endfor
@@ -526,7 +526,7 @@ function! highlightag#run_hitag(...) abort
         return
     endif
     let tag_info = s:get_tag_info(0, filetype)
-    call s:set_keywards(tag_info)
+    call s:set_keywards(tag_info, filetype, win_getid())
     call s:set_highlights(filetype)
 endfunction
 
@@ -554,7 +554,7 @@ function! highlightag#run_hitag_file(...) abort
 
     for tfile in tagfiles()
         let tag_info = s:get_tag_info_file(tfile, 0, filetype)
-        call s:set_keywards(tag_info)
+        call s:set_keywards(tag_info, filetype, win_getid())
     endfor
     call s:set_highlights(filetype)
 endfunction
