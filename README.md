@@ -63,6 +63,8 @@ The above commands can specify the file type. If it is not specified, &filetype 
 
 ## Options
 
+- `g:highlightag#ctags_cmd` specify the ctags command. default: `ctags`
+
 - `g:highlightag#ctags_opts` set the options of ctags command executed in this plugin. default: `-n`.
 
 - Highlights set in this plugin start from HiTag. You can check each highlight by `:filter HiTag highlight`. You can set highlights like `:hi HiTag~~ ctermfg=#` or `:hi link HiTag~~ Identifier`. Some highlights are already linked.
