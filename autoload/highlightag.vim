@@ -424,15 +424,16 @@ function! s:get_tag_info(job, filetype) abort
         endif
         return []
     endif
+    let ctags_cmd = get(g:, 'highlightag#ctags_cmd', 'ctags')
     let ctags_opts = get(g:, 'highlightag#ctags_opts', '-n')
-    let ctags_cmd = printf('ctags -f - --language-force=%s %s %s',
-                \ a:filetype, ctags_opts, fnameescape(expand('%')))
+    let ctags_cmds = printf('%s -f - --language-force=%s %s %s',
+                \ ctags_cmd, a:filetype, ctags_opts, fnameescape(expand('%')))
 
     if a:job
-        " let ctags_cmd = split(ctags_cmd)
-        call s:run_job(ctags_cmd, [a:filetype, win_getid()])
+        " let ctags_cmds = split(ctags_cmds)
+        call s:run_job(ctags_cmds, [a:filetype, win_getid()])
     else
-        silent let ctags_res = systemlist(ctags_cmd)
+        silent let ctags_res = systemlist(ctags_cmds)
         return ctags_res
     endif
     return []
